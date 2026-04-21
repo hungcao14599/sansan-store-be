@@ -1,0 +1,484 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum InventoryLogType {
+  INITIAL
+  RESTOCK
+  ADJUSTMENT
+  SALE
+  RETURN
+  CANCELLATION
+}
+
+enum RevenueLogType {
+  SALE
+  ADJUSTMENT
+}
+
+enum InvoiceProvider {
+  MISA
+  VNPT
+  VIETTEL
+}
+
+enum InvoiceStatus {
+  PENDING
+  ISSUED
+  FAILED
+  CANCELLED
+}
+
+enum TaxCategory {
+  NO_VAT
+  VAT_0
+  VAT_5
+  VAT_8
+  VAT_10
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CARD
+  EWALLET
+  MIXED
+}
+
+enum PaymentTransactionType {
+  COLLECTION
+  REFUND
+}
+
+enum OrderReturnInvoiceAction {
+  NONE
+  REVIEW_DRAFT
+  ISSUE_ADJUSTMENT
+}
+
+enum TaxDeclarationMethod {
+  ACTUAL_REVENUE
+}
+
+enum PurchaseReceiptStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+enum InventorySnapshotPeriod {
+  DAY
+  MONTH
+  YEAR
+}
+
+model User {
+  id                  String               @id @default(uuid()) @db.Uuid
+  email               String               @unique
+  fullName            String
+  passwordHash        String
+  role                UserRole             @default(STAFF)
+  isActive            Boolean              @default(true)
+  orders              Order[]              @relation("OrderCreator")
+  auditLogs           AuditLog[]
+  inventoryLogs       InventoryLog[]
+  revenueLogs         RevenueLog[]
+  paymentTransactions PaymentTransaction[] @relation("PaymentProcessedBy")
+  issuedInvoices      Invoice[]            @relation("InvoiceIssuedBy")
+  orderReturns        OrderReturn[]        @relation("OrderReturnsCreatedBy")
+  purchaseReceipts    PurchaseReceipt[]    @relation("PurchaseReceiptCreatedBy")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([role, isActive])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model BusinessProfile {
+  id                     String               @id @default(uuid()) @db.Uuid
+  legalName              String
+  storeName              String
+  taxCode                String               @unique
+  registrationNumber     String?
+  ownerName              String?
+  address                String
+  phone                  String?
+  email                  String?
+  taxDeclarationMethod   TaxDeclarationMethod @default(ACTUAL_REVENUE)
+  invoiceSeries          String?
+  invoiceTemplateCode    String?
+  defaultInvoiceProvider InvoiceProvider      @default(MISA)
+  invoices               Invoice[]
+  purchaseReceipts       PurchaseReceipt[]
+  inventorySnapshots     InventorySnapshot[]
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+
+  @@index([storeName])
+  @@index([createdAt])
+  @@map("business_profiles")
+}
+
+model Product {
+  id                   String                @id @default(uuid()) @db.Uuid
+  sku                  String                @unique
+  barcode              String?               @unique
+  name                 String
+  description          String?
+  unit                 String                @default("item")
+  price                Decimal               @db.Decimal(18, 2)
+  costPrice            Decimal?              @db.Decimal(18, 2)
+  discountAmount       Decimal               @default(0) @db.Decimal(18, 2)
+  discountPercent      Decimal               @default(0) @db.Decimal(5, 2)
+  taxCategory          TaxCategory           @default(NO_VAT)
+  taxRate              Decimal               @default(0) @db.Decimal(5, 2)
+  isActive             Boolean               @default(true)
+  inventory            Inventory?
+  orderItems           OrderItem[]
+  returnItems          OrderReturnItem[]
+  inventoryLogs        InventoryLog[]
+  purchaseReceiptItems PurchaseReceiptItem[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  @@index([name])
+  @@index([isActive])
+  @@index([taxCategory, isActive])
+  @@index([createdAt])
+  @@map("products")
+}
+
+model Inventory {
+  id        String         @id @default(uuid()) @db.Uuid
+  productId String         @unique @db.Uuid
+  quantity  Int            @default(0)
+  minStock  Int            @default(0)
+  product   Product        @relation(fields: [productId], references: [id])
+  logs      InventoryLog[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([quantity])
+  @@index([createdAt])
+  @@map("inventories")
+}
+
+model InventoryLog {
+  id             String           @id @default(uuid()) @db.Uuid
+  inventoryId    String           @db.Uuid
+  productId      String           @db.Uuid
+  orderId        String?          @db.Uuid
+  type           InventoryLogType
+  delta          Int
+  quantityBefore Int
+  quantityAfter  Int
+  note           String?
+  createdById    String?          @db.Uuid
+  inventory      Inventory        @relation(fields: [inventoryId], references: [id])
+  product        Product          @relation(fields: [productId], references: [id])
+  order          Order?           @relation(fields: [orderId], references: [id])
+  createdBy      User?            @relation(fields: [createdById], references: [id])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([productId, createdAt])
+  @@index([inventoryId, createdAt])
+  @@index([orderId])
+  @@index([type, createdAt])
+  @@map("inventory_logs")
+}
+
+model Order {
+  id                  String               @id @default(uuid()) @db.Uuid
+  orderNumber         String               @unique
+  status              OrderStatus          @default(PENDING)
+  subtotal            Decimal              @default(0) @db.Decimal(18, 2)
+  discount            Decimal              @default(0) @db.Decimal(18, 2)
+  taxableTotal        Decimal              @default(0) @db.Decimal(18, 2)
+  tax                 Decimal              @default(0) @db.Decimal(18, 2)
+  total               Decimal              @default(0) @db.Decimal(18, 2)
+  notes               String?
+  customerName        String?
+  createdById         String               @db.Uuid
+  paidAt              DateTime?
+  cancelledAt         DateTime?
+  createdBy           User                 @relation("OrderCreator", fields: [createdById], references: [id])
+  items               OrderItem[]
+  returns             OrderReturn[]
+  revenueLogs         RevenueLog[]
+  invoice             Invoice?
+  inventoryLogs       InventoryLog[]
+  paymentTransactions PaymentTransaction[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@index([status, createdAt])
+  @@index([createdById, createdAt])
+  @@index([paidAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String            @id @default(uuid()) @db.Uuid
+  orderId        String            @db.Uuid
+  productId      String            @db.Uuid
+  productName    String
+  sku            String
+  unit           String            @default("item")
+  unitPrice      Decimal           @db.Decimal(18, 2)
+  quantity       Int
+  taxCategory    TaxCategory       @default(NO_VAT)
+  taxRate        Decimal           @default(0) @db.Decimal(5, 2)
+  lineSubtotal   Decimal           @default(0) @db.Decimal(18, 2)
+  discountAmount Decimal           @default(0) @db.Decimal(18, 2)
+  taxableAmount  Decimal           @default(0) @db.Decimal(18, 2)
+  taxAmount      Decimal           @default(0) @db.Decimal(18, 2)
+  lineTotal      Decimal           @db.Decimal(18, 2)
+  order          Order             @relation(fields: [orderId], references: [id])
+  product        Product           @relation(fields: [productId], references: [id])
+  returnItems    OrderReturnItem[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([orderId, productId])
+  @@index([createdAt])
+  @@map("order_items")
+}
+
+model OrderReturn {
+  id            String                   @id @default(uuid()) @db.Uuid
+  orderId       String                   @db.Uuid
+  returnNumber  String                   @unique
+  reason        String?
+  subtotal      Decimal                  @default(0) @db.Decimal(18, 2)
+  discount      Decimal                  @default(0) @db.Decimal(18, 2)
+  taxableTotal  Decimal                  @default(0) @db.Decimal(18, 2)
+  tax           Decimal                  @default(0) @db.Decimal(18, 2)
+  total         Decimal                  @default(0) @db.Decimal(18, 2)
+  invoiceAction OrderReturnInvoiceAction @default(NONE)
+  invoiceNote   String?
+  createdById   String?                  @db.Uuid
+  order         Order                    @relation(fields: [orderId], references: [id])
+  createdBy     User?                    @relation("OrderReturnsCreatedBy", fields: [createdById], references: [id])
+  items         OrderReturnItem[]
+  createdAt     DateTime                 @default(now())
+  updatedAt     DateTime                 @updatedAt
+
+  @@index([orderId, createdAt])
+  @@index([createdById, createdAt])
+  @@index([invoiceAction, createdAt])
+  @@map("order_returns")
+}
+
+model OrderReturnItem {
+  id                String      @id @default(uuid()) @db.Uuid
+  orderReturnId     String      @db.Uuid
+  orderItemId       String      @db.Uuid
+  productId         String      @db.Uuid
+  productName       String
+  sku               String
+  unit              String      @default("item")
+  quantity          Int
+  restockedQuantity Int         @default(0)
+  unitPrice         Decimal     @db.Decimal(18, 2)
+  lineSubtotal      Decimal     @default(0) @db.Decimal(18, 2)
+  discountAmount    Decimal     @default(0) @db.Decimal(18, 2)
+  taxableAmount     Decimal     @default(0) @db.Decimal(18, 2)
+  taxAmount         Decimal     @default(0) @db.Decimal(18, 2)
+  lineTotal         Decimal     @default(0) @db.Decimal(18, 2)
+  note              String?
+  orderReturn       OrderReturn @relation(fields: [orderReturnId], references: [id])
+  orderItem         OrderItem   @relation(fields: [orderItemId], references: [id])
+  product           Product     @relation(fields: [productId], references: [id])
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([orderReturnId])
+  @@index([orderItemId])
+  @@index([productId])
+  @@index([createdAt])
+  @@map("order_return_items")
+}
+
+model RevenueLog {
+  id             String         @id @default(uuid()) @db.Uuid
+  orderId        String         @db.Uuid
+  type           RevenueLogType
+  amount         Decimal        @db.Decimal(18, 2)
+  reason         String?
+  adjustmentOfId String?        @db.Uuid
+  createdById    String?        @db.Uuid
+  order          Order          @relation(fields: [orderId], references: [id])
+  adjustmentOf   RevenueLog?    @relation("RevenueAdjustments", fields: [adjustmentOfId], references: [id])
+  adjustments    RevenueLog[]   @relation("RevenueAdjustments")
+  createdBy      User?          @relation(fields: [createdById], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([orderId, createdAt])
+  @@index([type, createdAt])
+  @@index([createdAt])
+  @@index([adjustmentOfId])
+  @@map("revenue_logs")
+}
+
+model PaymentTransaction {
+  id                String                 @id @default(uuid()) @db.Uuid
+  orderId           String                 @db.Uuid
+  type              PaymentTransactionType @default(COLLECTION)
+  method            PaymentMethod          @default(CASH)
+  amount            Decimal                @db.Decimal(18, 2)
+  receivedAmount    Decimal?               @db.Decimal(18, 2)
+  changeAmount      Decimal?               @db.Decimal(18, 2)
+  externalReference String?
+  note              String?
+  processedById     String?                @db.Uuid
+  order             Order                  @relation(fields: [orderId], references: [id])
+  processedBy       User?                  @relation("PaymentProcessedBy", fields: [processedById], references: [id])
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  @@index([orderId, type, createdAt])
+  @@index([method, createdAt])
+  @@map("payment_transactions")
+}
+
+model Invoice {
+  id                      String           @id @default(uuid()) @db.Uuid
+  orderId                 String           @unique @db.Uuid
+  businessProfileId       String?          @db.Uuid
+  provider                InvoiceProvider
+  status                  InvoiceStatus    @default(PENDING)
+  externalReference       String?
+  invoiceNumber           String?
+  invoiceSeries           String?
+  invoiceTemplateCode     String?
+  taxAuthorityCode        String?
+  providerStatusMessage   String?
+  signedXmlUrl            String?
+  pdfUrl                  String?
+  buyerName               String?
+  buyerTaxCode            String?
+  sellerName              String?
+  sellerTaxCode           String?
+  issuedById              String?          @db.Uuid
+  adjustmentForInvoiceId  String?          @db.Uuid
+  replacementForInvoiceId String?          @db.Uuid
+  requestPayload          Json?
+  responsePayload         Json?
+  issuedAt                DateTime?
+  cancelledAt             DateTime?
+  order                   Order            @relation(fields: [orderId], references: [id])
+  businessProfile         BusinessProfile? @relation(fields: [businessProfileId], references: [id])
+  issuedBy                User?            @relation("InvoiceIssuedBy", fields: [issuedById], references: [id])
+  adjustmentForInvoice    Invoice?         @relation("InvoiceAdjustments", fields: [adjustmentForInvoiceId], references: [id])
+  adjustmentInvoices      Invoice[]        @relation("InvoiceAdjustments")
+  replacementForInvoice   Invoice?         @relation("InvoiceReplacements", fields: [replacementForInvoiceId], references: [id])
+  replacementInvoices     Invoice[]        @relation("InvoiceReplacements")
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+
+  @@index([provider, status])
+  @@index([businessProfileId, createdAt])
+  @@index([externalReference])
+  @@index([invoiceNumber])
+  @@index([issuedAt])
+  @@index([createdAt])
+  @@map("invoices")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @db.Uuid
+  entityType String
+  entityId   String
+  action     String
+  metadata   Json?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model PurchaseReceipt {
+  id                String                @id @default(uuid()) @db.Uuid
+  receiptNumber     String                @unique
+  businessProfileId String?               @db.Uuid
+  supplierName      String
+  supplierTaxCode   String?
+  status            PurchaseReceiptStatus @default(CONFIRMED)
+  receivedAt        DateTime              @default(now())
+  notes             String?
+  createdById       String?               @db.Uuid
+  businessProfile   BusinessProfile?      @relation(fields: [businessProfileId], references: [id])
+  createdBy         User?                 @relation("PurchaseReceiptCreatedBy", fields: [createdById], references: [id])
+  items             PurchaseReceiptItem[]
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  @@index([supplierName, receivedAt])
+  @@index([businessProfileId, receivedAt])
+  @@map("purchase_receipts")
+}
+
+model PurchaseReceiptItem {
+  id                String          @id @default(uuid()) @db.Uuid
+  purchaseReceiptId String          @db.Uuid
+  productId         String          @db.Uuid
+  productName       String
+  sku               String
+  unit              String          @default("item")
+  quantity          Int
+  unitCost          Decimal         @db.Decimal(18, 2)
+  lineTotal         Decimal         @db.Decimal(18, 2)
+  purchaseReceipt   PurchaseReceipt @relation(fields: [purchaseReceiptId], references: [id])
+  product           Product         @relation(fields: [productId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([purchaseReceiptId])
+  @@index([productId])
+  @@map("purchase_receipt_items")
+}
+
+model InventorySnapshot {
+  id                String                  @id @default(uuid()) @db.Uuid
+  businessProfileId String?                 @db.Uuid
+  periodType        InventorySnapshotPeriod
+  snapshotDate      DateTime
+  totalQuantity     Int
+  totalCostValue    Decimal                 @db.Decimal(18, 2)
+  totalRetailValue  Decimal                 @db.Decimal(18, 2)
+  snapshotPayload   Json?
+  note              String?
+  businessProfile   BusinessProfile?        @relation(fields: [businessProfileId], references: [id])
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  @@unique([businessProfileId, periodType, snapshotDate])
+  @@index([snapshotDate])
+  @@map("inventory_snapshots")
+}
