@@ -16,6 +16,8 @@ exports.OrderController = void 0;
 const common_1 = require("@nestjs/common");
 const client_1 = require("@prisma/client");
 const current_user_decorator_1 = require("../common/decorators/current-user.decorator");
+const roles_decorator_1 = require("../common/decorators/roles.decorator");
+const role_enum_1 = require("../common/enums/role.enum");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const add_order_item_dto_1 = require("./dto/add-order-item.dto");
@@ -159,6 +161,7 @@ __decorate([
 ], OrderController.prototype, "checkout", null);
 __decorate([
     (0, common_1.Post)(':id/cancel'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),
@@ -168,6 +171,7 @@ __decorate([
 ], OrderController.prototype, "cancel", null);
 __decorate([
     (0, common_1.Post)(':id/returns'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),
@@ -177,6 +181,7 @@ __decorate([
 ], OrderController.prototype, "returnPaidItems", null);
 __decorate([
     (0, common_1.Post)(':id/adjustment'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, current_user_decorator_1.CurrentUser)()),

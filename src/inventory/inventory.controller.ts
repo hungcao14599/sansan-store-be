@@ -13,6 +13,7 @@ export class InventoryController {
   constructor(private readonly inventoryService: InventoryService) {}
 
   @Get()
+  @Roles(Role.ADMIN)
   findAll() {
     return this.inventoryService.findAll();
   }

@@ -25,6 +25,7 @@ export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Get()
+  @Roles(Role.ADMIN)
   findAll() {
     return this.productService.findAll();
   }
@@ -35,6 +36,7 @@ export class ProductController {
   }
 
   @Get(':id')
+  @Roles(Role.ADMIN)
   findOne(@Param('id') id: string) {
     return this.productService.findOne(id);
   }

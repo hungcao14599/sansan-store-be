@@ -15,6 +15,8 @@ import {
   CurrentUser,
   type AuthenticatedUser,
 } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
+import { Role } from '../common/enums/role.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { AddOrderItemDto } from './dto/add-order-item.dto';
@@ -98,6 +100,7 @@ export class OrderController {
   }
 
   @Post(':id/cancel')
+  @Roles(Role.ADMIN)
   cancel(
     @Param('id') id: string,
     @Body() dto: CancelOrderDto,
@@ -107,6 +110,7 @@ export class OrderController {
   }
 
   @Post(':id/returns')
+  @Roles(Role.ADMIN)
   returnPaidItems(
     @Param('id') id: string,
     @Body() dto: ReturnPaidOrderDto,
@@ -116,6 +120,7 @@ export class OrderController {
   }
 
   @Post(':id/adjustment')
+  @Roles(Role.ADMIN)
   adjustment(
     @Param('id') id: string,
     @Body() dto: CreateRevenueAdjustmentDto,
