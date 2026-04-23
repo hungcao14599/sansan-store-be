@@ -10,9 +10,13 @@ const http_exception_filter_1 = require("./common/filters/http-exception.filter"
 const app_module_1 = require("./app.module");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
+    const corsOrigins = (process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://127.0.0.1:5173')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean);
     app.use((0, helmet_1.default)());
     app.enableCors({
-        origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        origin: corsOrigins.includes('*') ? true : corsOrigins,
         credentials: true,
         exposedHeaders: ['Content-Disposition'],
     });
