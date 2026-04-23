@@ -26,7 +26,13 @@ let UsersController = class UsersController {
         this.usersService = usersService;
     }
     getMe(user) {
-        return this.usersService.findById(user.sub);
+        return {
+            id: user.sub,
+            email: user.email,
+            fullName: user.fullName,
+            role: user.role,
+            isActive: true,
+        };
     }
     listUsers() {
         return this.usersService.listUsers();

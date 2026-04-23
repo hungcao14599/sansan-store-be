@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -6,8 +7,10 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
+import { OrderStatus } from '@prisma/client';
 import {
   CurrentUser,
   type AuthenticatedUser,
@@ -18,10 +21,13 @@ import { AddOrderItemDto } from './dto/add-order-item.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { CheckoutOrderDto } from './dto/checkout-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderWithItemDto } from './dto/create-order-with-item.dto';
 import { CreateRevenueAdjustmentDto } from './dto/create-revenue-adjustment.dto';
 import { ReturnPaidOrderDto } from './dto/return-paid-order.dto';
 import { UpdateOrderItemDto } from './dto/update-order-item.dto';
-import { OrderService } from './order.service';
+import { OrderService, type OrderListView } from './order.service';
+
+const orderListViews: OrderListView[] = ['detail', 'summary', 'pos'];
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,8 +35,11 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Get()
-  findAll() {
-    return this.orderService.findAll();
+  findAll(@Query('view') view?: string, @Query('status') status?: string) {
+    return this.orderService.findAll({
+      view: this.parseView(view),
+      status: this.parseStatus(status),
+    });
   }
 
   @Get(':id')
@@ -41,6 +50,14 @@ export class OrderController {
   @Post()
   create(@Body() dto: CreateOrderDto, @CurrentUser() user: AuthenticatedUser) {
     return this.orderService.create(dto, user.sub);
+  }
+
+  @Post('with-item')
+  createWithItem(
+    @Body() dto: CreateOrderWithItemDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.orderService.createWithItem(dto, user.sub);
   }
 
   @Post(':id/items')
@@ -105,5 +122,29 @@ export class OrderController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.orderService.createAdjustment(id, dto, user.sub);
+  }
+
+  private parseView(view?: string) {
+    if (!view) {
+      return undefined;
+    }
+
+    if (!orderListViews.includes(view as OrderListView)) {
+      throw new BadRequestException('Invalid order list view');
+    }
+
+    return view as OrderListView;
+  }
+
+  private parseStatus(status?: string) {
+    if (!status) {
+      return undefined;
+    }
+
+    if (!Object.values(OrderStatus).includes(status as OrderStatus)) {
+      throw new BadRequestException('Invalid order status');
+    }
+
+    return status as OrderStatus;
   }
 }

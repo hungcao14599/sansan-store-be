@@ -20,6 +20,7 @@ const role_enum_1 = require("../common/enums/role.enum");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
 const create_product_dto_1 = require("./dto/create-product.dto");
+const search_products_dto_1 = require("./dto/search-products.dto");
 const update_product_dto_1 = require("./dto/update-product.dto");
 const product_service_1 = require("./product.service");
 let ProductController = class ProductController {
@@ -29,6 +30,9 @@ let ProductController = class ProductController {
     }
     findAll() {
         return this.productService.findAll();
+    }
+    search(query) {
+        return this.productService.search(query);
     }
     findOne(id) {
         return this.productService.findOne(id);
@@ -50,6 +54,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], ProductController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)('search'),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [search_products_dto_1.SearchProductsDto]),
+    __metadata("design:returntype", void 0)
+], ProductController.prototype, "search", null);
 __decorate([
     (0, common_1.Get)(':id'),
     __param(0, (0, common_1.Param)('id')),

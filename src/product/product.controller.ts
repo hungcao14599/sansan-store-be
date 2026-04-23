@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, type AuthenticatedUser } from '../common/decorators/current-user.decorator';
@@ -14,6 +15,7 @@ import { Role } from '../common/enums/role.enum';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CreateProductDto } from './dto/create-product.dto';
+import { SearchProductsDto } from './dto/search-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { ProductService } from './product.service';
 
@@ -25,6 +27,11 @@ export class ProductController {
   @Get()
   findAll() {
     return this.productService.findAll();
+  }
+
+  @Get('search')
+  search(@Query() query: SearchProductsDto) {
+    return this.productService.search(query);
   }
 
   @Get(':id')

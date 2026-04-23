@@ -15,6 +15,8 @@ const client_1 = require("@prisma/client");
 const audit_log_service_1 = require("../audit-log/audit-log.service");
 const prisma_service_1 = require("../common/prisma/prisma.service");
 const tax_utils_1 = require("../common/tax/tax.utils");
+const DEFAULT_SEARCH_LIMIT = 20;
+const MAX_SEARCH_LIMIT = 50;
 let ProductService = class ProductService {
     prisma;
     auditLogService;
@@ -99,6 +101,39 @@ let ProductService = class ProductService {
             },
             orderBy: { createdAt: 'desc' },
         });
+    }
+    async search(query) {
+        const limit = Math.min(Math.max(query.limit ?? DEFAULT_SEARCH_LIMIT, 1), MAX_SEARCH_LIMIT);
+        const offset = Math.max(query.offset ?? 0, 0);
+        const keyword = query.q?.trim();
+        const where = {
+            isActive: true,
+            ...(keyword
+                ? {
+                    OR: [
+                        { name: { contains: keyword, mode: 'insensitive' } },
+                        { sku: { contains: keyword, mode: 'insensitive' } },
+                        { barcode: { contains: keyword, mode: 'insensitive' } },
+                    ],
+                }
+                : {}),
+        };
+        const rows = await this.prisma.product.findMany({
+            where,
+            include: {
+                inventory: true,
+            },
+            orderBy: [{ name: 'asc' }, { sku: 'asc' }, { createdAt: 'desc' }],
+            skip: offset,
+            take: limit + 1,
+        });
+        const hasMore = rows.length > limit;
+        const items = hasMore ? rows.slice(0, limit) : rows;
+        return {
+            items,
+            hasMore,
+            nextOffset: hasMore ? offset + limit : null,
+        };
     }
     async findOne(id) {
         const product = await this.prisma.product.findUnique({

@@ -13,7 +13,13 @@ export class UsersController {
 
   @Get('me')
   getMe(@CurrentUser() user: AuthenticatedUser) {
-    return this.usersService.findById(user.sub);
+    return {
+      id: user.sub,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      isActive: true,
+    };
   }
 
   @Get()

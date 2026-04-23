@@ -36,6 +36,12 @@ export declare class UsersService {
         createdAt: Date;
         updatedAt: Date;
     }>;
+    findActiveAuthUserById(id: string): Promise<{
+        id: string;
+        email: string;
+        fullName: string;
+        role: import("@prisma/client").$Enums.UserRole;
+    } | null>;
     listUsers(): Promise<{
         id: string;
         email: string;

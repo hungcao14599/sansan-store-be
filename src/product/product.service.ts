@@ -8,7 +8,11 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { PrismaService } from '../common/prisma/prisma.service';
 import { getTaxRateByCategory } from '../common/tax/tax.utils';
 import { CreateProductDto } from './dto/create-product.dto';
+import { SearchProductsDto } from './dto/search-products.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+
+const DEFAULT_SEARCH_LIMIT = 20;
+const MAX_SEARCH_LIMIT = 50;
 
 @Injectable()
 export class ProductService {
@@ -105,6 +109,45 @@ export class ProductService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async search(query: SearchProductsDto) {
+    const limit = Math.min(
+      Math.max(query.limit ?? DEFAULT_SEARCH_LIMIT, 1),
+      MAX_SEARCH_LIMIT,
+    );
+    const offset = Math.max(query.offset ?? 0, 0);
+    const keyword = query.q?.trim();
+    const where: Prisma.ProductWhereInput = {
+      isActive: true,
+      ...(keyword
+        ? {
+            OR: [
+              { name: { contains: keyword, mode: 'insensitive' } },
+              { sku: { contains: keyword, mode: 'insensitive' } },
+              { barcode: { contains: keyword, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const rows = await this.prisma.product.findMany({
+      where,
+      include: {
+        inventory: true,
+      },
+      orderBy: [{ name: 'asc' }, { sku: 'asc' }, { createdAt: 'desc' }],
+      skip: offset,
+      take: limit + 1,
+    });
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+
+    return {
+      items,
+      hasMore,
+      nextOffset: hasMore ? offset + limit : null,
+    };
   }
 
   async findOne(id: string) {

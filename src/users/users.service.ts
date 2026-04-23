@@ -87,6 +87,21 @@ export class UsersService {
     return user;
   }
 
+  async findActiveAuthUserById(id: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        id,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+        role: true,
+      },
+    });
+  }
+
   async listUsers() {
     return this.prisma.user.findMany({
       orderBy: { createdAt: 'desc' },

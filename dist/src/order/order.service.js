@@ -16,14 +16,15 @@ const audit_log_service_1 = require("../audit-log/audit-log.service");
 const prisma_service_1 = require("../common/prisma/prisma.service");
 const invoice_service_1 = require("../invoice/invoice.service");
 const revenue_log_service_1 = require("../revenue-log/revenue-log.service");
+const orderCreatorSelect = client_1.Prisma.validator()({
+    id: true,
+    fullName: true,
+    email: true,
+});
 const orderDetailInclude = client_1.Prisma.validator()({
     items: true,
     createdBy: {
-        select: {
-            id: true,
-            fullName: true,
-            email: true,
-        },
+        select: orderCreatorSelect,
     },
     revenueLogs: {
         orderBy: { createdAt: 'asc' },
@@ -38,11 +39,77 @@ const orderDetailInclude = client_1.Prisma.validator()({
                 orderBy: { createdAt: 'asc' },
             },
             createdBy: {
+                select: orderCreatorSelect,
+            },
+        },
+        orderBy: { createdAt: 'desc' },
+    },
+});
+const orderPosInclude = client_1.Prisma.validator()({
+    items: true,
+});
+const orderSummarySelect = client_1.Prisma.validator()({
+    id: true,
+    orderNumber: true,
+    status: true,
+    subtotal: true,
+    discount: true,
+    taxableTotal: true,
+    tax: true,
+    total: true,
+    notes: true,
+    customerName: true,
+    createdById: true,
+    paidAt: true,
+    cancelledAt: true,
+    createdAt: true,
+    updatedAt: true,
+    createdBy: {
+        select: {
+            id: true,
+            fullName: true,
+            email: true,
+        },
+    },
+    _count: {
+        select: {
+            items: true,
+        },
+    },
+    invoice: {
+        select: {
+            id: true,
+            orderId: true,
+            provider: true,
+            status: true,
+            externalReference: true,
+            invoiceSeries: true,
+            invoiceTemplateCode: true,
+            providerStatusMessage: true,
+            createdAt: true,
+        },
+    },
+    returns: {
+        select: {
+            id: true,
+            orderId: true,
+            returnNumber: true,
+            reason: true,
+            subtotal: true,
+            discount: true,
+            taxableTotal: true,
+            tax: true,
+            total: true,
+            invoiceAction: true,
+            invoiceNote: true,
+            createdAt: true,
+            _count: {
                 select: {
-                    id: true,
-                    fullName: true,
-                    email: true,
+                    items: true,
                 },
+            },
+            createdBy: {
+                select: orderCreatorSelect,
             },
         },
         orderBy: { createdAt: 'desc' },
@@ -84,11 +151,102 @@ let OrderService = class OrderService {
         });
         return order;
     }
-    async findAll() {
-        return this.prisma.order.findMany({
-            include: orderDetailInclude,
-            orderBy: { createdAt: 'desc' },
+    async createWithItem(dto, actorId) {
+        const [orderNumber, product] = await Promise.all([
+            this.generateOrderNumber(),
+            this.prisma.product.findUnique({
+                where: { id: dto.productId },
+            }),
+        ]);
+        if (!product || !product.isActive) {
+            throw new common_1.NotFoundException('Product not found');
+        }
+        return this.prisma.$transaction(async (tx) => {
+            const order = await tx.order.create({
+                data: {
+                    orderNumber,
+                    customerName: dto.customerName,
+                    notes: dto.notes,
+                    createdById: actorId,
+                },
+            });
+            const pricing = this.calculateOrderItemPricing(product.price, dto.quantity, product.taxRate);
+            await tx.orderItem.create({
+                data: {
+                    orderId: order.id,
+                    productId: product.id,
+                    productName: product.name,
+                    sku: product.sku,
+                    unit: product.unit,
+                    unitPrice: product.price,
+                    quantity: dto.quantity,
+                    taxCategory: product.taxCategory,
+                    taxRate: product.taxRate,
+                    lineSubtotal: pricing.lineSubtotal,
+                    discountAmount: pricing.discountAmount,
+                    taxableAmount: pricing.taxableAmount,
+                    taxAmount: pricing.taxAmount,
+                    lineTotal: pricing.lineTotal,
+                },
+            });
+            const updatedOrder = await this.refreshTotals(tx, order.id);
+            await this.auditLogService.create({
+                actorId,
+                entityType: 'Order',
+                entityId: order.id,
+                action: 'order.create_with_item',
+                metadata: {
+                    orderNumber,
+                    productId: product.id,
+                    sku: product.sku,
+                    quantity: dto.quantity,
+                },
+            }, tx);
+            return updatedOrder;
         });
+    }
+    async findAll(options = {}) {
+        const where = options.status ? { status: options.status } : undefined;
+        const orderBy = { createdAt: 'desc' };
+        if (options.view === 'pos') {
+            return this.prisma.order.findMany({
+                where,
+                include: orderPosInclude,
+                orderBy,
+            });
+        }
+        if (options.view === 'summary') {
+            const orders = await this.prisma.order.findMany({
+                where,
+                select: orderSummarySelect,
+                orderBy,
+            });
+            return orders.map((order) => this.mapOrderSummary(order));
+        }
+        return this.prisma.order.findMany({
+            where,
+            include: orderDetailInclude,
+            orderBy,
+        });
+    }
+    mapOrderSummary(order) {
+        const { _count, returns, ...orderData } = order;
+        return {
+            ...orderData,
+            items: this.createCountPlaceholders(_count.items),
+            returns: returns.map((orderReturn) => {
+                const { _count: returnCount, ...returnData } = orderReturn;
+                return {
+                    ...returnData,
+                    items: this.createCountPlaceholders(returnCount.items),
+                };
+            }),
+        };
+    }
+    createCountPlaceholders(count) {
+        return Array.from({ length: count }, (_, index) => ({
+            id: String(index),
+        }));
     }
     async findOne(id) {
         const order = await this.prisma.order.findUnique({

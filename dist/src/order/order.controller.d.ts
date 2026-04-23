@@ -3,6 +3,7 @@ import { AddOrderItemDto } from './dto/add-order-item.dto';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { CheckoutOrderDto } from './dto/checkout-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { CreateOrderWithItemDto } from './dto/create-order-with-item.dto';
 import { CreateRevenueAdjustmentDto } from './dto/create-revenue-adjustment.dto';
 import { ReturnPaidOrderDto } from './dto/return-paid-order.dto';
 import { UpdateOrderItemDto } from './dto/update-order-item.dto';
@@ -10,37 +11,7 @@ import { OrderService } from './order.service';
 export declare class OrderController {
     private readonly orderService;
     constructor(orderService: OrderService);
-    findAll(): Promise<({
-        revenueLogs: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            orderId: string;
-            type: import("@prisma/client").$Enums.RevenueLogType;
-            createdById: string | null;
-            amount: import("@prisma/client/runtime/library").Decimal;
-            reason: string | null;
-            adjustmentOfId: string | null;
-        }[];
-        paymentTransactions: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            orderId: string;
-            type: import("@prisma/client").$Enums.PaymentTransactionType;
-            note: string | null;
-            amount: import("@prisma/client/runtime/library").Decimal;
-            method: import("@prisma/client").$Enums.PaymentMethod;
-            receivedAmount: import("@prisma/client/runtime/library").Decimal | null;
-            changeAmount: import("@prisma/client/runtime/library").Decimal | null;
-            externalReference: string | null;
-            processedById: string | null;
-        }[];
-        createdBy: {
-            id: string;
-            email: string;
-            fullName: string;
-        };
+    findAll(view?: string, status?: string): Promise<({
         items: {
             id: string;
             createdAt: Date;
@@ -60,76 +31,6 @@ export declare class OrderController {
             taxAmount: import("@prisma/client/runtime/library").Decimal;
             lineTotal: import("@prisma/client/runtime/library").Decimal;
         }[];
-        returns: ({
-            createdBy: {
-                id: string;
-                email: string;
-                fullName: string;
-            } | null;
-            items: {
-                id: string;
-                createdAt: Date;
-                updatedAt: Date;
-                sku: string;
-                unit: string;
-                discountAmount: import("@prisma/client/runtime/library").Decimal;
-                productId: string;
-                quantity: number;
-                note: string | null;
-                productName: string;
-                unitPrice: import("@prisma/client/runtime/library").Decimal;
-                lineSubtotal: import("@prisma/client/runtime/library").Decimal;
-                taxableAmount: import("@prisma/client/runtime/library").Decimal;
-                taxAmount: import("@prisma/client/runtime/library").Decimal;
-                lineTotal: import("@prisma/client/runtime/library").Decimal;
-                orderItemId: string;
-                orderReturnId: string;
-                restockedQuantity: number;
-            }[];
-        } & {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            orderId: string;
-            createdById: string | null;
-            subtotal: import("@prisma/client/runtime/library").Decimal;
-            discount: import("@prisma/client/runtime/library").Decimal;
-            taxableTotal: import("@prisma/client/runtime/library").Decimal;
-            tax: import("@prisma/client/runtime/library").Decimal;
-            total: import("@prisma/client/runtime/library").Decimal;
-            reason: string | null;
-            returnNumber: string;
-            invoiceAction: import("@prisma/client").$Enums.OrderReturnInvoiceAction;
-            invoiceNote: string | null;
-        })[];
-        invoice: {
-            id: string;
-            createdAt: Date;
-            updatedAt: Date;
-            invoiceSeries: string | null;
-            invoiceTemplateCode: string | null;
-            orderId: string;
-            status: import("@prisma/client").$Enums.InvoiceStatus;
-            cancelledAt: Date | null;
-            externalReference: string | null;
-            businessProfileId: string | null;
-            provider: import("@prisma/client").$Enums.InvoiceProvider;
-            invoiceNumber: string | null;
-            taxAuthorityCode: string | null;
-            providerStatusMessage: string | null;
-            signedXmlUrl: string | null;
-            pdfUrl: string | null;
-            buyerName: string | null;
-            buyerTaxCode: string | null;
-            sellerName: string | null;
-            sellerTaxCode: string | null;
-            issuedById: string | null;
-            adjustmentForInvoiceId: string | null;
-            replacementForInvoiceId: string | null;
-            requestPayload: import("@prisma/client/runtime/library").JsonValue | null;
-            responsePayload: import("@prisma/client/runtime/library").JsonValue | null;
-            issuedAt: Date | null;
-        } | null;
     } & {
         id: string;
         createdAt: Date;
@@ -146,7 +47,64 @@ export declare class OrderController {
         customerName: string | null;
         paidAt: Date | null;
         cancelledAt: Date | null;
-    })[]>;
+    })[] | {
+        items: {
+            id: string;
+        }[];
+        returns: {
+            items: {
+                id: string;
+            }[];
+            id: string;
+            createdAt: Date;
+            orderId: string;
+            createdBy: {
+                id: string;
+                email: string;
+                fullName: string;
+            } | null;
+            subtotal: import("@prisma/client/runtime/library").Decimal;
+            discount: import("@prisma/client/runtime/library").Decimal;
+            taxableTotal: import("@prisma/client/runtime/library").Decimal;
+            tax: import("@prisma/client/runtime/library").Decimal;
+            total: import("@prisma/client/runtime/library").Decimal;
+            reason: string | null;
+            returnNumber: string;
+            invoiceAction: import("@prisma/client").$Enums.OrderReturnInvoiceAction;
+            invoiceNote: string | null;
+        }[];
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        createdById: string;
+        createdBy: {
+            id: string;
+            email: string;
+            fullName: string;
+        };
+        orderNumber: string;
+        status: import("@prisma/client").$Enums.OrderStatus;
+        subtotal: import("@prisma/client/runtime/library").Decimal;
+        discount: import("@prisma/client/runtime/library").Decimal;
+        taxableTotal: import("@prisma/client/runtime/library").Decimal;
+        tax: import("@prisma/client/runtime/library").Decimal;
+        total: import("@prisma/client/runtime/library").Decimal;
+        notes: string | null;
+        customerName: string | null;
+        paidAt: Date | null;
+        cancelledAt: Date | null;
+        invoice: {
+            id: string;
+            createdAt: Date;
+            invoiceSeries: string | null;
+            invoiceTemplateCode: string | null;
+            orderId: string;
+            status: import("@prisma/client").$Enums.InvoiceStatus;
+            externalReference: string | null;
+            provider: import("@prisma/client").$Enums.InvoiceProvider;
+            providerStatusMessage: string | null;
+        } | null;
+    }[]>;
     findOne(id: string): Promise<{
         revenueLogs: {
             id: string;
@@ -285,6 +243,57 @@ export declare class OrderController {
         cancelledAt: Date | null;
     }>;
     create(dto: CreateOrderDto, user: AuthenticatedUser): Promise<{
+        paymentTransactions: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            orderId: string;
+            type: import("@prisma/client").$Enums.PaymentTransactionType;
+            note: string | null;
+            amount: import("@prisma/client/runtime/library").Decimal;
+            method: import("@prisma/client").$Enums.PaymentMethod;
+            receivedAmount: import("@prisma/client/runtime/library").Decimal | null;
+            changeAmount: import("@prisma/client/runtime/library").Decimal | null;
+            externalReference: string | null;
+            processedById: string | null;
+        }[];
+        items: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            sku: string;
+            unit: string;
+            discountAmount: import("@prisma/client/runtime/library").Decimal;
+            taxCategory: import("@prisma/client").$Enums.TaxCategory;
+            taxRate: import("@prisma/client/runtime/library").Decimal;
+            productId: string;
+            quantity: number;
+            orderId: string;
+            productName: string;
+            unitPrice: import("@prisma/client/runtime/library").Decimal;
+            lineSubtotal: import("@prisma/client/runtime/library").Decimal;
+            taxableAmount: import("@prisma/client/runtime/library").Decimal;
+            taxAmount: import("@prisma/client/runtime/library").Decimal;
+            lineTotal: import("@prisma/client/runtime/library").Decimal;
+        }[];
+    } & {
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        createdById: string;
+        orderNumber: string;
+        status: import("@prisma/client").$Enums.OrderStatus;
+        subtotal: import("@prisma/client/runtime/library").Decimal;
+        discount: import("@prisma/client/runtime/library").Decimal;
+        taxableTotal: import("@prisma/client/runtime/library").Decimal;
+        tax: import("@prisma/client/runtime/library").Decimal;
+        total: import("@prisma/client/runtime/library").Decimal;
+        notes: string | null;
+        customerName: string | null;
+        paidAt: Date | null;
+        cancelledAt: Date | null;
+    }>;
+    createWithItem(dto: CreateOrderWithItemDto, user: AuthenticatedUser): Promise<{
         paymentTransactions: {
             id: string;
             createdAt: Date;
@@ -910,4 +919,6 @@ export declare class OrderController {
         reason: string | null;
         adjustmentOfId: string | null;
     }>;
+    private parseView;
+    private parseStatus;
 }
