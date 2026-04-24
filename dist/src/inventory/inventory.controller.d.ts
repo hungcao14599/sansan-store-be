@@ -11,9 +11,10 @@ export declare class InventoryController {
             createdAt: Date;
             updatedAt: Date;
             name: string;
+            description: string | null;
             sku: string;
             barcode: string | null;
-            description: string | null;
+            productGroupId: string | null;
             unit: string;
             price: import("@prisma/client/runtime/library").Decimal;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;
@@ -37,9 +38,10 @@ export declare class InventoryController {
             createdAt: Date;
             updatedAt: Date;
             name: string;
+            description: string | null;
             sku: string;
             barcode: string | null;
-            description: string | null;
+            productGroupId: string | null;
             unit: string;
             price: import("@prisma/client/runtime/library").Decimal;
             costPrice: import("@prisma/client/runtime/library").Decimal | null;

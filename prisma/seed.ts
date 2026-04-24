@@ -77,6 +77,7 @@ async function main() {
     {
       sku: 'SN-COCA-390',
       name: 'Coca Cola 390ml',
+      productGroup: 'Do uong',
       unit: 'lon',
       price: '12000',
       costPrice: '9000',
@@ -87,6 +88,7 @@ async function main() {
     {
       sku: 'SN-MILO-180',
       name: 'Sua Milo 180ml',
+      productGroup: 'Do uong',
       unit: 'hop',
       price: '10000',
       costPrice: '7500',
@@ -97,6 +99,7 @@ async function main() {
     {
       sku: 'SN-MI-TOM',
       name: 'Mi tom Hao Hao',
+      productGroup: 'Thuc pham kho',
       unit: 'goi',
       price: '4500',
       costPrice: '3200',
@@ -107,6 +110,7 @@ async function main() {
     {
       sku: 'SN-DUONG-1KG',
       name: 'Duong cat 1kg',
+      productGroup: 'Gia vi',
       unit: 'goi',
       price: '28000',
       costPrice: '24000',
@@ -117,10 +121,21 @@ async function main() {
   ];
 
   for (const item of samples) {
+    const productGroup = await prisma.productGroup.upsert({
+      where: { name: item.productGroup },
+      update: {
+        isActive: true,
+      },
+      create: {
+        name: item.productGroup,
+      },
+    });
+
     const product = await prisma.product.upsert({
       where: { sku: item.sku },
       update: {
         name: item.name,
+        productGroupId: productGroup.id,
         unit: item.unit,
         price: item.price,
         costPrice: item.costPrice,
@@ -131,6 +146,7 @@ async function main() {
       create: {
         sku: item.sku,
         name: item.name,
+        productGroupId: productGroup.id,
         unit: item.unit,
         price: item.price,
         costPrice: item.costPrice,

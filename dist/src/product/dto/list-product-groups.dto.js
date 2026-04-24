@@ -9,36 +9,13 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SearchProductsDto = void 0;
+exports.ListProductGroupsDto = void 0;
 const class_transformer_1 = require("class-transformer");
 const class_validator_1 = require("class-validator");
-class SearchProductsDto {
-    q;
-    limit;
-    offset;
-    inStockOnly;
+class ListProductGroupsDto {
+    includeInactive;
 }
-exports.SearchProductsDto = SearchProductsDto;
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], SearchProductsDto.prototype, "q", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_transformer_1.Type)(() => Number),
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.Min)(1),
-    (0, class_validator_1.Max)(50),
-    __metadata("design:type", Number)
-], SearchProductsDto.prototype, "limit", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_transformer_1.Type)(() => Number),
-    (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.Min)(0),
-    __metadata("design:type", Number)
-], SearchProductsDto.prototype, "offset", void 0);
+exports.ListProductGroupsDto = ListProductGroupsDto;
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_transformer_1.Transform)(({ value }) => {
@@ -52,5 +29,5 @@ __decorate([
     }),
     (0, class_validator_1.IsBoolean)(),
     __metadata("design:type", Boolean)
-], SearchProductsDto.prototype, "inStockOnly", void 0);
-//# sourceMappingURL=search-products.dto.js.map
+], ListProductGroupsDto.prototype, "includeInactive", void 0);
+//# sourceMappingURL=list-product-groups.dto.js.map

@@ -174,6 +174,44 @@ describe('OrderService checkout', () => {
     expect(auditLogService.create).toHaveBeenCalled();
   });
 
+  it('rejects checkout before financial records when a product is out of stock', async () => {
+    tx.order.findUnique.mockResolvedValue({
+      id: orderId,
+      orderNumber: 'ORD-20260417-00001',
+      status: OrderStatus.PENDING,
+      notes: null,
+      total: new Prisma.Decimal(12000),
+      items: [
+        {
+          id: 'item-1',
+          productId,
+          productName: 'Coca Cola 390ml',
+          quantity: 1,
+          lineSubtotal: new Prisma.Decimal(12000),
+          taxRate: new Prisma.Decimal(0),
+        },
+      ],
+      revenueLogs: [],
+    });
+
+    tx.inventory.findMany.mockResolvedValue([
+      {
+        id: 'inventory-1',
+        productId,
+        quantity: 0,
+      },
+    ]);
+
+    await expect(
+      service.checkout(orderId, { discount: 0 }, actorId),
+    ).rejects.toThrow('Sản phẩm Coca Cola 390ml đã hết hàng');
+
+    expect(tx.order.updateMany).not.toHaveBeenCalled();
+    expect(tx.revenueLog.create).not.toHaveBeenCalled();
+    expect(tx.paymentTransaction.create).not.toHaveBeenCalled();
+    expect(tx.$queryRaw).not.toHaveBeenCalled();
+  });
+
   it('rejects checkout when stock is insufficient after a concurrent change', async () => {
     tx.order.findUnique.mockResolvedValue({
       id: orderId,
@@ -198,7 +236,7 @@ describe('OrderService checkout', () => {
       {
         id: 'inventory-1',
         productId,
-        quantity: 10,
+        quantity: 12,
       },
     ]);
     tx.order.updateMany.mockResolvedValue({ count: 1 });

@@ -18,6 +18,14 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
+  productGroupId?: string;
+
+  @IsOptional()
+  @IsString()
+  productGroupName?: string;
+
+  @IsOptional()
+  @IsString()
   barcode?: string;
 
   @IsOptional()

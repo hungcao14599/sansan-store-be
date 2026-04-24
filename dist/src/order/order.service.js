@@ -156,10 +156,14 @@ let OrderService = class OrderService {
             this.generateOrderNumber(),
             this.prisma.product.findUnique({
                 where: { id: dto.productId },
+                include: { inventory: true },
             }),
         ]);
         if (!product || !product.isActive) {
             throw new common_1.NotFoundException('Product not found');
+        }
+        if ((product.inventory?.quantity ?? 0) <= 0) {
+            throw new common_1.BadRequestException(`Sản phẩm ${product.name} đã hết hàng, không thể thêm vào hóa đơn`);
         }
         return this.prisma.$transaction(async (tx) => {
             const order = await tx.order.create({
@@ -274,6 +278,9 @@ let OrderService = class OrderService {
         });
         if (!product || !product.isActive) {
             throw new common_1.NotFoundException('Product not found');
+        }
+        if ((product.inventory?.quantity ?? 0) <= 0) {
+            throw new common_1.BadRequestException(`Sản phẩm ${product.name} đã hết hàng, không thể thêm vào hóa đơn`);
         }
         return this.prisma.$transaction(async (tx) => {
             const existingItem = await tx.orderItem.findFirst({
@@ -477,6 +484,12 @@ let OrderService = class OrderService {
                 if (!inventory) {
                     throw new common_1.BadRequestException(`Inventory missing for product ${item.productName}`);
                 }
+                if (inventory.quantity <= 0) {
+                    throw new common_1.BadRequestException(`Sản phẩm ${item.productName} đã hết hàng, không thể thanh toán`);
+                }
+                if (inventory.quantity < item.quantity) {
+                    throw new common_1.BadRequestException(`Sản phẩm ${item.productName} chỉ còn ${inventory.quantity}, không đủ để thanh toán ${item.quantity}`);
+                }
             }
             for (const item of pricedItems) {
                 await tx.orderItem.update({
@@ -544,7 +557,7 @@ let OrderService = class OrderService {
             "quantity" AS "quantityAfter"
         `);
                 if (!updatedInventory[0]) {
-                    throw new common_1.BadRequestException(`Insufficient stock for ${item.productName}. Inventory changed during checkout`);
+                    throw new common_1.BadRequestException(`Tồn kho của ${item.productName} không đủ, vui lòng kiểm tra lại trước khi thanh toán`);
                 }
                 const quantityBefore = Number(updatedInventory[0].quantityBefore);
                 const quantityAfter = Number(updatedInventory[0].quantityAfter);

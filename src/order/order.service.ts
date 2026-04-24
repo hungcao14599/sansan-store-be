@@ -217,11 +217,18 @@ export class OrderService {
       this.generateOrderNumber(),
       this.prisma.product.findUnique({
         where: { id: dto.productId },
+        include: { inventory: true },
       }),
     ]);
 
     if (!product || !product.isActive) {
       throw new NotFoundException('Product not found');
+    }
+
+    if ((product.inventory?.quantity ?? 0) <= 0) {
+      throw new BadRequestException(
+        `Sản phẩm ${product.name} đã hết hàng, không thể thêm vào hóa đơn`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -365,6 +372,12 @@ export class OrderService {
 
     if (!product || !product.isActive) {
       throw new NotFoundException('Product not found');
+    }
+
+    if ((product.inventory?.quantity ?? 0) <= 0) {
+      throw new BadRequestException(
+        `Sản phẩm ${product.name} đã hết hàng, không thể thêm vào hóa đơn`,
+      );
     }
 
     return this.prisma.$transaction(async (tx) => {
@@ -650,6 +663,18 @@ export class OrderService {
             `Inventory missing for product ${item.productName}`,
           );
         }
+
+        if (inventory.quantity <= 0) {
+          throw new BadRequestException(
+            `Sản phẩm ${item.productName} đã hết hàng, không thể thanh toán`,
+          );
+        }
+
+        if (inventory.quantity < item.quantity) {
+          throw new BadRequestException(
+            `Sản phẩm ${item.productName} chỉ còn ${inventory.quantity}, không đủ để thanh toán ${item.quantity}`,
+          );
+        }
       }
 
       for (const item of pricedItems) {
@@ -727,7 +752,7 @@ export class OrderService {
 
         if (!updatedInventory[0]) {
           throw new BadRequestException(
-            `Insufficient stock for ${item.productName}. Inventory changed during checkout`,
+            `Tồn kho của ${item.productName} không đủ, vui lòng kiểm tra lại trước khi thanh toán`,
           );
         }
 

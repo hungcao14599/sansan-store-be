@@ -19,8 +19,12 @@ const roles_decorator_1 = require("../common/decorators/roles.decorator");
 const role_enum_1 = require("../common/enums/role.enum");
 const jwt_auth_guard_1 = require("../common/guards/jwt-auth.guard");
 const roles_guard_1 = require("../common/guards/roles.guard");
+const create_product_group_dto_1 = require("./dto/create-product-group.dto");
 const create_product_dto_1 = require("./dto/create-product.dto");
+const export_products_dto_1 = require("./dto/export-products.dto");
+const list_product_groups_dto_1 = require("./dto/list-product-groups.dto");
 const search_products_dto_1 = require("./dto/search-products.dto");
+const update_product_group_dto_1 = require("./dto/update-product-group.dto");
 const update_product_dto_1 = require("./dto/update-product.dto");
 const product_service_1 = require("./product.service");
 let ProductController = class ProductController {
@@ -33,6 +37,24 @@ let ProductController = class ProductController {
     }
     search(query) {
         return this.productService.search(query);
+    }
+    async exportProducts(query, res) {
+        const { buffer, filename } = await this.productService.exportProducts(query);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(buffer);
+    }
+    findGroups(query) {
+        return this.productService.findGroups(query);
+    }
+    createGroup(dto, user) {
+        return this.productService.createGroup(dto, user.sub);
+    }
+    updateGroup(id, dto, user) {
+        return this.productService.updateGroup(id, dto, user.sub);
+    }
+    removeGroup(id, user) {
+        return this.productService.removeGroup(id, user.sub);
     }
     findOne(id) {
         return this.productService.findOne(id);
@@ -62,6 +84,51 @@ __decorate([
     __metadata("design:paramtypes", [search_products_dto_1.SearchProductsDto]),
     __metadata("design:returntype", void 0)
 ], ProductController.prototype, "search", null);
+__decorate([
+    (0, common_1.Get)('export'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
+    __param(0, (0, common_1.Query)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [export_products_dto_1.ExportProductsDto, Object]),
+    __metadata("design:returntype", Promise)
+], ProductController.prototype, "exportProducts", null);
+__decorate([
+    (0, common_1.Get)('groups'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
+    __param(0, (0, common_1.Query)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [list_product_groups_dto_1.ListProductGroupsDto]),
+    __metadata("design:returntype", void 0)
+], ProductController.prototype, "findGroups", null);
+__decorate([
+    (0, common_1.Post)('groups'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [create_product_group_dto_1.CreateProductGroupDto, Object]),
+    __metadata("design:returntype", void 0)
+], ProductController.prototype, "createGroup", null);
+__decorate([
+    (0, common_1.Patch)('groups/:id'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, update_product_group_dto_1.UpdateProductGroupDto, Object]),
+    __metadata("design:returntype", void 0)
+], ProductController.prototype, "updateGroup", null);
+__decorate([
+    (0, common_1.Delete)('groups/:id'),
+    (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, current_user_decorator_1.CurrentUser)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], ProductController.prototype, "removeGroup", null);
 __decorate([
     (0, common_1.Get)(':id'),
     (0, roles_decorator_1.Roles)(role_enum_1.Role.ADMIN),
